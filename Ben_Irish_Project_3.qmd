@@ -1,0 +1,182 @@
+---
+title: "Urban Coyotes in California: An Exploratory Analysis of GBIF Occurrence Data"
+author: "Ben Irish"
+date: today
+format:
+  pdf:
+    documentclass: scrartcl
+    toc: true
+    number-sections: true
+    geometry: margin=1in
+    fig-width: 7
+    fig-height: 4.5
+    fig-cap-location: bottom
+    fig-pos: "H"
+execute:
+  echo: false
+  warning: false
+  message: false
+bibliography: references.bib
+---
+
+```{r setup}
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(sf)
+library(knitr)
+library(kableExtra)
+library(lubridate)
+library(scales)
+
+coyote <- readRDS("data/processed/coyote_classified.rds")
+```
+
+\newpage
+# Introduction
+
+*Canis latrans*, more commonly known as coyotes, are among the most adaptable carnivores in North America. Once confined largely to open plains and deserts, they have expanded across nearly the entire continent over the last century [@hody2018] and are now a familiar presence in major cities [@gehrt2009]. 
+This report explores coyote occurrence records from California, drawn from the Global Biodiversity Information Facility [@gbif_download]. The central question is descriptive: where and when are coyotes observed, and how do observations differ between urban and non-urban areas? In the process, the analysis runs into a recurring theme in biodiversity data: records reflect not only where animals are, but where and when people are looking for them.
+The analysis is exploratory. Rather than testing a hypothesis, it characterizes the geographic, temporal, and seasonal patterns in the data. All analysis was performed in R [@rstats] using the rgbif [@rgbif] and sf [@sf] packages.
+
+```{r}
+#| label: tbl-variables
+#| tbl-cap: "Variables in the cleaned coyote occurrence dataset."
+
+tibble::tribble(
+  ~Variable,        ~Type,        ~Description,
+  "gbif_id",        "integer",    "Unique GBIF record identifier",
+  "lat, lon",       "numeric",    "Decimal latitude and longitude of the observation",
+  "coord_uncert_m", "numeric",    "Coordinate uncertainty in meters",
+  "event_date",     "date",       "Date of the observation",
+  "year, month, day","integer",   "Components of the observation date",
+  "basis",          "character",  "Record type (e.g. human observation, specimen)",
+  "institution",    "character",  "Institution that supplied the record",
+  "recorded_by",    "character",  "Observer name(s)",
+  "urban",          "character",  "Whether the point falls in a Census urban area"
+) |>
+  kable(booktabs = TRUE) |>
+  kable_styling(latex_options = c("HOLD_position"))
+```
+
+
+The cleaned dataset contains 24,371 georeferenced coyote observations from California spanning 1886 to 2026, each tagged as urban or non-urban based on whether it falls within a Census-defined urban area. Table 1 describes the variables retained for analysis.
+
+# Exploratory Analysis
+
+## Geographic distribution
+
+```{r}
+#| label: fig-map
+#| fig-cap: "Coyote observations across California (1886–2026), colored by whether they fall within a Census-defined urban area. Each point is one observation."
+
+library(tigris)
+options(tigris_use_cache = TRUE)
+
+ca <- states(cb = TRUE, year = 2022) |>
+  dplyr::filter(STUSPS == "CA") |>
+  sf::st_transform(4326)
+
+ggplot() +
+  geom_sf(data = ca, fill = "grey95", color = "grey60") +
+  geom_point(
+    data = coyote,
+    aes(x = lon, y = lat, color = urban),
+    size = 0.4, alpha = 0.3
+  ) +
+  scale_color_manual(values = c("Urban" = "firebrick", "Non-urban" = "steelblue")) +
+  coord_sf(xlim = c(-124.5, -114), ylim = c(32.4, 42.1)) +
+  labs(color = NULL, x = NULL, y = NULL) +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "top")
+```
+
+Coyote observations span the entire state, from the Mojave to the north coast, confirming the thorough presence of the species across California. Urban observations (red) cluster sharply around the major metropolitan areas: greater Los Angeles, San Diego, the Bay Area, and Sacramento. Non-urban observations (blue) are scattered broadly across rural areas. The near-even split between the two categories is already visible.
+
+## Observations over time
+
+```{r}
+#| label: fig-timeseries
+#| fig-cap: "Coyote observations per year in California. The sharp rise after 2015 tracks the growth of citizen-science platforms rather than a sudden change in the coyote population."
+
+coyote |>
+  filter(year >= 1990, year <= 2025) |>
+  count(year) |>
+  ggplot(aes(year, n)) +
+  geom_col(fill = "steelblue") +
+  labs(x = "Year", y = "Observations") +
+  theme_minimal(base_size = 11)
+```
+
+Annual observations were negligible until the mid-2010s, then climbed steeply from a few hundred per year around 2015 to over 5,000 in 2025. This was not due to a rapid increase in the coyote population, however. The timing tracks the rise of citizen-science platforms like iNaturalist, which launched in 2008 and grew quickly after 2016. What the curve mostly measures is the number of people carrying smartphones and uploading wildlife photos, not the number of coyotes. This sampling bias matters for what follows. The data records where and when people observed coyotes, which is distinctly different from where and when coyotes were actually present.
+
+## The urban share over time
+
+```{r}
+#| label: fig-urbanshare
+#| fig-cap: "Percentage of coyote observations falling within urban areas, by year (2010–2025). The urban share roughly doubles over the period before leveling off near half."
+
+coyote |>
+  filter(year >= 2010, year <= 2025) |>
+  group_by(year) |>
+  summarise(pct_urban = mean(urban == "Urban") * 100, .groups = "drop") |>
+  ggplot(aes(year, pct_urban)) +
+  geom_line(color = "firebrick", linewidth = 1) +
+  geom_point(color = "firebrick", size = 1.5) +
+  ylim(0, 100) +
+  labs(x = "Year", y = "Urban observations (%)") +
+  theme_minimal(base_size = 11)
+```
+
+The urban share of observations roughly doubled between 2010 and the early 2020s, climbing from under 20% to around 50%, where it has since leveled off. There are two competing explanations for this that the data cannot entirely separate. The first is that coyotes did in fact colonize California cities over this period. The second is that the rise also reflects who started using citizen-science apps. As platforms spread from naturalists in wild areas to ordinary city residents photographing backyard wildlife, the urban share of observations climbed regardless of any change in the coyotes themselves. The fact that this curve rises over exactly the same period as the overall observation explosion (Figure 2) suggests the second effect does much of the work. The honest conclusion is that both are likely happening, but occurrence data alone cannot reveal exactly how much of each.
+
+## Seasonal patterns
+
+```{r}
+#| label: fig-seasonal
+#| fig-cap: "Coyote observations by month, split by urban and non-urban areas. Urban observations peak in summer while non-urban observations peak in winter."
+
+coyote |>
+  filter(!is.na(month)) |>
+  count(month, urban) |>
+  ggplot(aes(factor(month), n, fill = urban)) +
+  geom_col(position = "dodge") +
+  scale_fill_manual(values = c("Urban" = "firebrick", "Non-urban" = "steelblue")) +
+  labs(x = "Month", y = "Observations", fill = NULL) +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "top")
+```
+
+Observations show a mild seasonal pattern that differs between the two categories. Non-urban observations peak in winter and dip in summer, while urban observations do the opposite. Similarly to the other trends, this likely reflects a mix of coyote behavior and human behavior. Urban coyotes are more active and visible during the summer pup-rearing season, when they range more boldly through neighborhoods, and city residents are outdoors more. Non-urban observation may track when people visit wilder areas, or seasonal coyote movement. The pattern is suggestive rather than conclusive, but the urban/non-urban divergence is consistent enough to note.
+
+\newpage
+# Summary
+
+```{r}
+#| label: tbl-summary
+#| tbl-cap: "Coyote observations by decade, with the share falling in urban areas."
+
+coyote |>
+  filter(year >= 1950) |>
+  mutate(decade = (year %/% 10) * 10) |>
+  group_by(decade) |>
+  summarise(
+    observations = n(),
+    pct_urban = round(mean(urban == "Urban") * 100, 1),
+    .groups = "drop"
+  ) |>
+    kable(
+    booktabs = TRUE,
+    col.names = c("Decade", "Observations", "Urban (%)")
+  ) |>
+  kable_styling(latex_options = c("HOLD_position"))
+```
+
+# Discussion
+
+Three patterns stand out. Coyotes are observed across the entire state of California, in both dense cities and remote wildlands, with a near-even split. The volume of observations has also grown enormously since the mid-2010s. Lastly, the urban share of observations has roughly doubled over the same period before leveling off.
+The thread connecting all three is that occurrence data conflates two things: the distribution of coyotes and the distribution of observers. The explosive growth in records, as previously noted, is driven mostly by citizen-science adoption, not a population boom. The rising urban share likely reflects both real urban colonization and the spread of observation apps into cities. Even the seasonal patterns may mix coyote behavior with human activity. None of these can be cleanly separated using occurrence data alone.
+This is not a weakness unique to this dataset. Rather, it is the central challenge of working with circumstantially dependent biodiversity records. Used carefully, GBIF data is still valuable. It reliably shows that coyotes are present across California's full range of environments, and it captures the dramatic recent growth in public engagement with urban wildlife. Unfortunately, it simply cannot quantify how much of an observed trend is animal and how much is observer.
+
+\newpage
+# References

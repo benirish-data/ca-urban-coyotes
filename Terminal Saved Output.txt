@@ -1,0 +1,23 @@
+Last login: Sun May 10 15:12:04 on ttys000
+benirish@Bens-Laptop ~ % cd ~/Desktop
+mkdir ca-urban-coyotes
+cd ca-urban-coyotes
+mkdir R data data/raw data/processed figures
+touch README.md .gitignore
+benirish@Bens-Laptop ca-urban-coyotes % 
+benirish@Bens-Laptop ca-urban-coyotes % echo "data/raw/*.csv
+data/raw/*.rds
+data/processed/*.rds
+.Rproj.user/
+.Rhistory
+.Rdata" > .gitignore
+benirish@Bens-Laptop ca-urban-coyotes % cd ~/Documents/Stats\ 20/PROJECTS/Stats20_Project_3
+touch .Renviron
+open -a TextEdit .Renviron
+benirish@Bens-Laptop Stats20_Project_3 % 
+
+
+
+
+
+
