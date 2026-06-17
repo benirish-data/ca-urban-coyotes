@@ -7,8 +7,7 @@ urban and non-urban areas.
 
 ## The question
 
-Coyotes occupy nearly every environment in California, from dense cities to
-remote wildlands. This project asks three descriptive questions:
+Coyotes occupy nearly every environment in California. This project asks three descriptive questions:
 
 - Where are coyotes observed across the state?
 - How has the volume of observations changed over time?
@@ -16,8 +15,7 @@ remote wildlands. This project asks three descriptive questions:
 
 A recurring theme runs through the analysis: occurrence data records where and
 when *people* observe coyotes, which is not the same as where and when coyotes
-actually are. The report treats this observation bias as a central limitation
-rather than an afterthought.
+actually are. The report treats this observation bias as a central limitation.
 
 ## Key findings
 
