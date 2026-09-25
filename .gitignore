@@ -7,3 +7,6 @@ data/processed/*
 .DS_Store
 Terminal Saved Output.txt
 .DS_Store
+
+/.quarto/
+**/*.quarto_ipynb
