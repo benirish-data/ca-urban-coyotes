@@ -56,3 +56,9 @@ The scripts in R/ run in order (01 -> 02 -> 03) to produce the cleaned,
 classified dataset. The Quarto report reads that dataset to generate all
 figures and tables. Rendering requires a LaTeX installation (e.g. tinytex)
 for PDF output.
+
+## Note on tools
+Parts of this project were developed with AI assistance (Claude),
+including the figure design and data search. The reasoning reflected here was
+verified against the data and primary sources. The written report is
+my own.
